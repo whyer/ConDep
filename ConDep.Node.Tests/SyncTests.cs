@@ -92,6 +92,29 @@ namespace ConDep.Node.Tests
             Assert.That(diffs.DeletedPaths.Any(x => x.RelativePath == @"psake\nuget\test3.txt"));
         }
 
+		[Test]
+		public void TestThatMissingFilesOnClientWillBeDeletedOnServer_ExcludedWorks()
+		{
+			File.CreateText(Path.Combine(_serverFilesRoot.FullName, "test1.txt")).Close();
+			File.CreateText(Path.Combine(_serverFilesRoot.FullName, @"psake\test2.txt")).Close();
+			File.CreateText(Path.Combine(_serverFilesRoot.FullName, @"psake\nuget\test3.txt")).Close();
+
+			// This file should be ignored
+			File.CreateText(Path.Combine(_serverFilesRoot.FullName, @"LeaveMe.txt")).Close();
+
+			Directory.CreateDirectory(Path.Combine(_serverFilesRoot.FullName, "LeaveMeDirectory"));
+			File.CreateText(Path.Combine(_serverFilesRoot.FullName, @"LeaveMeDirectory\foo.txt")).Close();
+
+			var diffs = GetDiffs();
+
+			Assert.That(diffs.MissingPaths.Count(), Is.EqualTo(0));
+			Assert.That(diffs.ChangedPaths.Count(), Is.EqualTo(0));
+			Assert.That(diffs.DeletedPaths.Count(), Is.EqualTo(3));
+			Assert.That(diffs.DeletedPaths.Any(x => x.RelativePath == @"test1.txt"));
+			Assert.That(diffs.DeletedPaths.Any(x => x.RelativePath == @"psake\test2.txt"));
+			Assert.That(diffs.DeletedPaths.Any(x => x.RelativePath == @"psake\nuget\test3.txt"));
+		}
+
         private SyncDirDiff GetDiffs()
         {
             var dstDirInfo = _dirHandler.GetSubDirInfo(_serverFilesRoot.FullName, "", "", _serverFilesRoot);

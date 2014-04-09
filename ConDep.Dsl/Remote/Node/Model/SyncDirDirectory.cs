@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Xml;
 
 namespace ConDep.Dsl.Remote.Node.Model
 {
@@ -25,7 +27,7 @@ namespace ConDep.Dsl.Remote.Node.Model
             return true;
         }
 
-        public SyncDirDiff Diff(DirectoryInfo directory)
+        public SyncDirDiff Diff(DirectoryInfo directory, string exclude = "")
         {
             var srcPaths = directory.GetAllRelativeFilePaths().ToList();
             var dstPaths = GetAllRelativeFilePaths().ToList();
@@ -86,8 +88,20 @@ namespace ConDep.Dsl.Remote.Node.Model
 
         private IEnumerable<SyncPath> GetUnwantedPaths(IEnumerable<SyncPath> dstPaths, IEnumerable<SyncPath> srcPaths)
         {
-            return dstPaths.Except(srcPaths, new SyncPathRelativePathComparer()); //Elements not in src
+	        var pattern = WildcardToRegex("LeaveMe*");
+	        var regex = new Regex(pattern);
+
+            var elementsNotInSource = dstPaths.Except(srcPaths, new SyncPathRelativePathComparer()); //Elements not in src
+	        var withRemovedExceptions = elementsNotInSource.Where(s => !regex.IsMatch(s.RelativePath));
+	        return withRemovedExceptions; 
         }
+
+		public static string WildcardToRegex(string pattern)
+		{
+			return "^" + Regex.Escape(pattern).
+							   Replace(@"\*", ".*").
+							   Replace(@"\?", ".") + "$";
+		}
 
         private IEnumerable<SyncPath> GetChangedPaths(IEnumerable<SyncPath> srcPaths, IEnumerable<SyncPath> missingDirPaths, string rootPath)
         {
